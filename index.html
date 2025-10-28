@@ -127,13 +127,25 @@
                 }
             };
 
+            const getCanvasCoordinates = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                const clientX = e.clientX || e.touches?.[0]?.clientX;
+                const clientY = e.clientY || e.touches?.[0]?.clientY;
+                
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
+                
+                return { x, y };
+            };
+
             const startDrawing = (e) => {
                 if (!drawingMode) return;
                 setIsDrawing(true);
-                const canvas = canvasRef.current;
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-                const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+                const { x, y } = getCanvasCoordinates(e);
                 setCurrentDrawing([{ x, y }]);
             };
 
@@ -142,9 +154,7 @@
                 e.preventDefault();
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-                const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+                const { x, y } = getCanvasCoordinates(e);
                 
                 const newPoint = { x, y };
                 setCurrentDrawing(prev => [...prev, newPoint]);
@@ -199,8 +209,19 @@
                 }
             };
 
+            const toggleDrawingMode = () => {
+                if (!drawingMode) {
+                    // Quando attiviamo la penna, cancelliamo il canvas
+                    if (canvasRef.current) {
+                        const ctx = canvasRef.current.getContext('2d');
+                        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                    }
+                }
+                setDrawingMode(!drawingMode);
+            };
+
             useEffect(() => {
-                if (canvasRef.current) {
+                if (canvasRef.current && !drawingMode) {
                     const canvas = canvasRef.current;
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -224,7 +245,7 @@
                         }
                     });
                 }
-            }, [drawings, showAllIdeas, selectedGroup]);
+            }, [drawings, showAllIdeas, selectedGroup, drawingMode]);
 
             const renderGroupView = () => {
                 const group = groups.find(g => g.id === selectedGroup);
@@ -291,7 +312,7 @@
                             <h2 className="text-3xl font-bold">Tutte le Idee</h2>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => setDrawingMode(!drawingMode)}
+                                    onClick={toggleDrawingMode}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                                         drawingMode ? 'bg-red-600 text-white' : 'bg-gray-600 text-white hover:bg-gray-700'
                                     }`}
